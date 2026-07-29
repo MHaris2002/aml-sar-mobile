@@ -1,50 +1,58 @@
-# Welcome to your Expo app 👋
+# AML SAR Assistant — Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native (Expo) mobile app that puts a live, working AI fraud-detection pipeline in your hand. Submit a transaction and watch a trained ML model, a RAG-grounded knowledge base, and an LLM generate a full Suspicious Activity Report (SAR) — end to end, in real time.
 
-## Get started
+This is the mobile frontend for the [AML SAR Assistant](https://github.com/MHaris2002/aml-sar-assistant) project. The backend (FastAPI, detection model, RAG pipeline, LLM orchestration) lives in that repo; this app is the client.
 
-1. Install dependencies
+## What it does
 
-   ```bash
-   npm install
-   ```
+The app has three tabs:
 
-2. Start the app
+**Dashboard** — Lists transactions flagged as fraudulent by the backend's trained Random Forest model (97.85% precision, 99.63% recall on validation data).
 
-   ```bash
-   npx expo start
-   ```
+**Submit** — The centerpiece. Enter raw transaction details (amount, origin/destination balances) and tap "Analyze." This calls the backend's `/analyze` endpoint, which runs the full pipeline live:
+1. Feature engineering (balance-mismatch detection)
+2. Fraud prediction (trained Random Forest model)
+3. RAG retrieval (grounded in real FinCEN/FATF regulatory documents)
+4. LLM reasoning — classifies the transaction as Money Laundering Typology or Account Takeover / Unauthorized Access Fraud
+5. Auto-drafts a structured SAR narrative
 
-In the output, you'll find options to open the app in a
+**Knowledge Base** — Shows which documents the system has automatically discovered and ingested via its gap-filling search layer (a background process that searches trusted regulatory domains — FinCEN, FATF, OCC, Federal Reserve — when the RAG system's confidence is weak, and ingests better source material automatically).
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Tech stack
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- **React Native** via **Expo** (SDK 54, using Expo Router for file-based navigation)
+- **TypeScript**
+- Connects to a **FastAPI** backend over REST
 
-## Get a fresh project
+## Why SDK 54
 
-When you're ready, run:
+This project intentionally pins Expo SDK 54 rather than the latest release. At time of writing, Expo Go 56.0.1 has a [known bug](https://github.com/expo/expo/issues/46846) that rejects all SDK 56 projects — SDK 54 is Expo's own recommended version "for learning with Expo Go" and avoids this issue entirely.
+
+## Running locally
+
+**Prerequisites:** Node.js, the [Expo Go](https://expo.dev/go) app on your phone, and the [backend](https://github.com/MHaris2002/aml-sar-assistant) running.
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Scan the QR code with Expo Go (Android) or the Camera app (iOS). Your phone and laptop must be on the same network.
 
-## Learn more
+**Important:** the backend must be started with `--host 0.0.0.0` so it's reachable from your phone, not just `localhost`:
+```bash
+uvicorn backend.main:app --reload --host 0.0.0.0
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Update the `API_BASE` constant at the top of each screen file (`app/(tabs)/index.tsx`, `submit.tsx`, `knowledge.tsx`) to match your machine's local network IP (find it via `ipconfig` on Windows or `ifconfig`/`ip addr` on Mac/Linux) — `127.0.0.1` will not work from a physical phone, since that address refers to the phone itself.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Known limitations
 
-## Join the community
+- IP address is currently hardcoded rather than configurable in-app — fine for local demo/development, would need an environment config or discovery mechanism for real deployment
+- No authentication — this is a demo/portfolio project, not a production system handling real financial data
+- Styling is fixed to light theme regardless of system dark/light mode setting, by design, to keep scope focused on functionality
 
-Join our community of developers creating universal apps.
+## Related
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [Backend repo (aml-sar-assistant)](https://github.com/MHaris2002/aml-sar-assistant) — data pipeline, model training, RAG knowledge base, LLM orchestration, and Power BI dashboard
