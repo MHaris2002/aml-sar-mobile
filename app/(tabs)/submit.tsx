@@ -6,16 +6,23 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Markdown from 'react-native-markdown-display';
 
-const API_BASE = 'http://172.20.10.2:8000'; // <-- same IP as your other screens
+const API_BASE = 'http://172.20.10.2:8000'; // <-- your IP
 
 export default function SubmitScreen() {
-  const [amount, setAmount] = useState('87622.50');
+  const [advancedMode, setAdvancedMode] = useState(false);
+
+  // Simple mode fields
+  const [amount, setAmount] = useState('1000');
+  const [yourBalance, setYourBalance] = useState('1000');
+  const [recipientBalance, setRecipientBalance] = useState('500');
+
+  // Advanced mode fields (raw, editable directly)
   const [oldbalanceOrg, setOldbalanceOrg] = useState('87622.50');
   const [newbalanceOrig, setNewbalanceOrig] = useState('0');
   const [oldbalanceDest, setOldbalanceDest] = useState('0');
   const [newbalanceDest, setNewbalanceDest] = useState('0');
-  const [isTransfer, setIsTransfer] = useState(true);
 
+  const [isTransfer, setIsTransfer] = useState(true);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,23 +32,40 @@ export default function SubmitScreen() {
     setError(null);
     setResult(null);
 
-    try {
-      const response = await fetch(`${API_BASE}/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    // In simple mode, calculate realistic after-balances from the natural inputs
+    const payload = advancedMode
+      ? {
           amount: parseFloat(amount),
           oldbalanceOrg: parseFloat(oldbalanceOrg),
           newbalanceOrig: parseFloat(newbalanceOrig),
           oldbalanceDest: parseFloat(oldbalanceDest),
           newbalanceDest: parseFloat(newbalanceDest),
           is_transfer: isTransfer,
-        }),
+        }
+      : {
+          amount: parseFloat(amount),
+          oldbalanceOrg: parseFloat(yourBalance),
+          newbalanceOrig: parseFloat(yourBalance) - parseFloat(amount),
+          oldbalanceDest: parseFloat(recipientBalance),
+          newbalanceDest: parseFloat(recipientBalance) + parseFloat(amount),
+          is_transfer: isTransfer,
+        };
+
+    try {
+      const response = await fetch(`${API_BASE}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
+
+      if (!response.ok) {
+        throw new Error(`Server error (${response.status}). Please try again.`);
+      }
+
       const data = await response.json();
       setResult(data);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -50,97 +74,109 @@ export default function SubmitScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <Text style={styles.header}>Submit Transaction</Text>
+        <Text style={styles.header}>Send Money</Text>
         <Text style={styles.subheader}>
-          Runs the full pipeline live: detection model → RAG retrieval → LLM SAR draft
+          Every transfer is automatically checked for fraud
         </Text>
 
-        <Text style={styles.label}>Amount</Text>
-        <TextInput
-          style={styles.input}
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-          placeholderTextColor="#999999"
-        />
+        {!advancedMode ? (
+          <>
+            <Text style={styles.label}>How much are you sending?</Text>
+            <TextInput
+              style={styles.input}
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+              placeholder="0.00"
+            />
 
-        <Text style={styles.label}>Origin balance (before)</Text>
-        <TextInput
-          style={styles.input}
-          value={oldbalanceOrg}
-          onChangeText={setOldbalanceOrg}
-          keyboardType="numeric"
-          placeholderTextColor="#999999"
-        />
+            <Text style={styles.label}>Your current balance</Text>
+            <TextInput
+              style={styles.input}
+              value={yourBalance}
+              onChangeText={setYourBalance}
+              keyboardType="numeric"
+              placeholder="0.00"
+            />
 
-        <Text style={styles.label}>Origin balance (after)</Text>
-        <TextInput
-          style={styles.input}
-          value={newbalanceOrig}
-          onChangeText={setNewbalanceOrig}
-          keyboardType="numeric"
-          placeholderTextColor="#999999"
-        />
+            <Text style={styles.label}>Recipient's current balance</Text>
+            <TextInput
+              style={styles.input}
+              value={recipientBalance}
+              onChangeText={setRecipientBalance}
+              keyboardType="numeric"
+              placeholder="0.00"
+            />
+          </>
+        ) : (
+          <>
+            <Text style={styles.advancedNote}>
+              Advanced mode: set exact before/after balances to test specific scenarios
+            </Text>
 
-        <Text style={styles.label}>Destination balance (before)</Text>
-        <TextInput
-          style={styles.input}
-          value={oldbalanceDest}
-          onChangeText={setOldbalanceDest}
-          keyboardType="numeric"
-          placeholderTextColor="#999999"
-        />
+            <Text style={styles.label}>Amount</Text>
+            <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="numeric" />
 
-        <Text style={styles.label}>Destination balance (after)</Text>
-        <TextInput
-          style={styles.input}
-          value={newbalanceDest}
-          onChangeText={setNewbalanceDest}
-          keyboardType="numeric"
-          placeholderTextColor="#999999"
-        />
+            <Text style={styles.label}>Your balance — before</Text>
+            <TextInput style={styles.input} value={oldbalanceOrg} onChangeText={setOldbalanceOrg} keyboardType="numeric" />
+
+            <Text style={styles.label}>Your balance — after</Text>
+            <TextInput style={styles.input} value={newbalanceOrig} onChangeText={setNewbalanceOrig} keyboardType="numeric" />
+
+            <Text style={styles.label}>Recipient's balance — before</Text>
+            <TextInput style={styles.input} value={oldbalanceDest} onChangeText={setOldbalanceDest} keyboardType="numeric" />
+
+            <Text style={styles.label}>Recipient's balance — after</Text>
+            <TextInput style={styles.input} value={newbalanceDest} onChangeText={setNewbalanceDest} keyboardType="numeric" />
+          </>
+        )}
 
         <View style={styles.switchRow}>
-          <Text style={styles.label}>Is Transfer</Text>
-          <Switch value={isTransfer} onValueChange={setIsTransfer} />
+          <Text style={styles.label}>Advanced mode</Text>
+          <Switch value={advancedMode} onValueChange={setAdvancedMode} />
         </View>
 
         <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
           {loading ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.buttonText}>Analyze Transaction</Text>
+            <Text style={styles.buttonText}>Check This Transfer</Text>
           )}
         </TouchableOpacity>
 
         {loading && (
           <Text style={styles.loadingHint}>
-            Running model prediction, RAG retrieval, and 3 LLM calls — this takes 10-20 seconds...
+            Checking for fraud, this takes a few seconds...
           </Text>
         )}
 
-        {error && <Text style={styles.errorText}>Error: {error}</Text>}
+        {error && <Text style={styles.errorText}>{error}</Text>}
 
         {result && (
           <View style={styles.resultBox}>
-            <Text style={styles.resultLabel}>
-              Fraud Prediction: {result.predicted_fraud ? 'FLAGGED' : 'CLEAR'}
-              {'  '}({(result.fraud_probability * 100).toFixed(2)}%)
+            <Text
+              style={[
+                styles.resultLabel,
+                { color: result.predicted_fraud ? '#c0392b' : '#27ae60' },
+              ]}
+            >
+              {result.predicted_fraud
+                ? `⚠ Flagged as Suspicious (${(result.fraud_probability * 100).toFixed(0)}% confidence)`
+                : '✓ This Transfer Looks Normal'}
             </Text>
 
-            <Text style={styles.sectionTitle}>Summary</Text>
+            <Text style={styles.sectionTitle}>What Happened</Text>
             <Text style={styles.bodyText}>{result.summary}</Text>
 
-            <Text style={styles.sectionTitle}>Why This Was Flagged</Text>
-            <Markdown style={markdownStyles}>{result.typology_analysis}</Markdown>
+            {result.predicted_fraud === 1 && (
+              <>
+                <Text style={styles.sectionTitle}>Why It Was Flagged</Text>
+                <Markdown style={markdownStyles}>{result.typology_analysis}</Markdown>
 
-            <Text style={styles.sectionTitle}>Official Report</Text>
-            <Markdown style={markdownStyles}>{result.sar_draft}</Markdown>
-
-            <Text style={styles.sectionTitle}>Sources</Text>
-            {result.retrieved_sources?.map((src: string, i: number) => (
-              <Text key={i} style={styles.sourceItem}>• {src}</Text>
-            ))}
+                <Text style={styles.sectionTitle}>Official Report</Text>
+                <Markdown style={markdownStyles}>{result.sar_draft}</Markdown>
+              </>
+            )}
           </View>
         )}
       </ScrollView>
@@ -148,37 +184,36 @@ export default function SubmitScreen() {
   );
 }
 
-const markdownStyles = {
-  body: { fontSize: 14, lineHeight: 21, color: '#333333' },
-  heading3: { fontSize: 16, fontWeight: '700' as const, marginTop: 14, marginBottom: 6, color: '#000000' },
-  strong: { fontWeight: '700' as const, color: '#000000' },
-  bullet_list: { marginTop: 4 },
-  list_item: { marginBottom: 4 },
-};
-
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 16, backgroundColor: '#ffffff' },
   header: { fontSize: 24, fontWeight: 'bold', marginTop: 10, color: '#000000' },
   subheader: { fontSize: 13, color: '#666666', marginBottom: 16 },
   label: { fontSize: 13, fontWeight: '600', marginTop: 10, marginBottom: 4, color: '#000000' },
+  advancedNote: { fontSize: 12, color: '#888888', fontStyle: 'italic', marginTop: 12, marginBottom: 4 },
   input: {
     borderWidth: 1, borderColor: '#cccccc', borderRadius: 8,
-    padding: 10, fontSize: 15, color: '#000000', backgroundColor: '#fafafa',
+    padding: 12, fontSize: 16, color: '#000000', backgroundColor: '#fafafa',
   },
   switchRow: {
     flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginTop: 16,
+    alignItems: 'center', marginTop: 20, paddingTop: 16,
+    borderTopWidth: 1, borderTopColor: '#eeeeee',
   },
   button: {
-    backgroundColor: '#2c3e50', padding: 14, borderRadius: 10,
+    backgroundColor: '#2c3e50', padding: 16, borderRadius: 12,
     alignItems: 'center', marginTop: 20,
   },
   buttonText: { color: '#ffffff', fontWeight: 'bold', fontSize: 16 },
   loadingHint: { fontSize: 12, color: '#666666', textAlign: 'center', marginTop: 10 },
-  errorText: { color: 'red', marginTop: 10 },
-  resultBox: { marginTop: 24, padding: 14, backgroundColor: '#f7f7f7', borderRadius: 10 },
-  resultLabel: { fontSize: 16, fontWeight: 'bold', marginBottom: 10, color: '#c0392b' },
-  sectionTitle: { fontSize: 14, fontWeight: 'bold', marginTop: 14, marginBottom: 4, color: '#000000' },
+  errorText: { color: 'red', marginTop: 10, textAlign: 'center' },
+  resultBox: { marginTop: 24, padding: 16, backgroundColor: '#f7f7f7', borderRadius: 12 },
+  resultLabel: { fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
+  sectionTitle: { fontSize: 15, fontWeight: 'bold', marginTop: 14, marginBottom: 4, color: '#000000' },
   bodyText: { fontSize: 13, lineHeight: 19, color: '#333333' },
-  sourceItem: { fontSize: 12, color: '#555555', marginTop: 2 },
 });
+
+const markdownStyles = {
+  body: { fontSize: 13, lineHeight: 19, color: '#333333' },
+  heading3: { fontSize: 14, fontWeight: '700' as const, marginTop: 12, marginBottom: 6, color: '#000000' },
+  strong: { fontWeight: '700' as const, color: '#000000' },
+};

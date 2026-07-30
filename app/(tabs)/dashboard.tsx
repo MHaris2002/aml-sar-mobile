@@ -1,16 +1,33 @@
 import { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
-const API_BASE = 'http://172.20.10.2:8000'; // <-- replace with your laptop's IP
+const API_BASE = 'http://172.20.10.2:8000'; // <-- your IP
 
 type Transaction = {
   id: number;
   amount: number;
   predicted_fraud: number;
+  orig_balance_drained: number;
+  dest_balance_stayed_zero: number;
 };
 
+function getReason(item: Transaction): string {
+  if (!item.predicted_fraud) {
+    return 'No unusual activity detected';
+  }
+  if (item.orig_balance_drained && item.dest_balance_stayed_zero) {
+    return 'Account was fully emptied and the money never arrived';
+  }
+  if (item.orig_balance_drained) {
+    return 'Account was fully emptied in one transaction';
+  }
+  return 'Unusual transaction pattern detected';
+}
+
 export default function DashboardScreen() {
+  const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,16 +66,22 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Flagged Transactions</Text>
-      <Text style={styles.subheader}>{transactions.length} results</Text>
+      <Text style={styles.subheader}>
+        {transactions.length} transactions our system flagged as suspicious
+      </Text>
       <FlatList
         data={transactions}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card}>
-            <Text style={styles.amount}>${item.amount.toLocaleString()}</Text>
-            <Text style={styles.badge}>
-              {item.predicted_fraud ? 'FLAGGED' : 'CLEAR'}
-            </Text>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push({ pathname: '/transaction-detail', params: { id: item.id } })}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.amount}>${item.amount.toLocaleString()}</Text>
+              <Text style={[styles.reason, { color: item.predicted_fraud ? '#c0392b' : '#27ae60' }]}>{getReason(item)}</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         )}
       />
@@ -68,24 +91,17 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 16, backgroundColor: '#ffffff' },
-  center: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-    padding: 20, backgroundColor: '#ffffff',
-  },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#ffffff' },
   header: { fontSize: 24, fontWeight: 'bold', marginTop: 10, color: '#000000' },
-  subheader: { fontSize: 14, color: '#666666', marginBottom: 10 },
+  subheader: { fontSize: 13, color: '#666666', marginBottom: 12 },
   loadingText: { marginTop: 10, color: '#000000' },
   card: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f2f2f2',
-    padding: 14,
-    borderRadius: 10,
-    marginVertical: 5,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#f7f7f7', padding: 16, borderRadius: 12, marginVertical: 5,
   },
-  amount: { fontSize: 16, fontWeight: '600', color: '#000000' },
-  badge: { fontSize: 12, fontWeight: 'bold', color: '#c0392b' },
+  amount: { fontSize: 17, fontWeight: '700', color: '#000000' },
+  reason: { fontSize: 12, color: '#c0392b', marginTop: 4 },
+  chevron: { fontSize: 22, color: '#999999', marginLeft: 8 },
   errorText: { color: 'red', textAlign: 'center', marginBottom: 8 },
   errorHint: { color: '#666666', textAlign: 'center', fontSize: 12 },
 });
