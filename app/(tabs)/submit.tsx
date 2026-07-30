@@ -4,6 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Markdown from 'react-native-markdown-display';
 
 const API_BASE = 'http://172.20.10.2:8000'; // <-- same IP as your other screens
 
@@ -130,11 +131,11 @@ export default function SubmitScreen() {
             <Text style={styles.sectionTitle}>Summary</Text>
             <Text style={styles.bodyText}>{result.summary}</Text>
 
-            <Text style={styles.sectionTitle}>Typology Analysis</Text>
-            <Text style={styles.bodyText}>{result.typology_analysis}</Text>
+            <Text style={styles.sectionTitle}>Why This Was Flagged</Text>
+            <Markdown style={markdownStyles}>{result.typology_analysis}</Markdown>
 
-            <Text style={styles.sectionTitle}>SAR Draft</Text>
-            <Text style={styles.bodyText}>{result.sar_draft}</Text>
+            <Text style={styles.sectionTitle}>Official Report</Text>
+            <Markdown style={markdownStyles}>{result.sar_draft}</Markdown>
 
             <Text style={styles.sectionTitle}>Sources</Text>
             {result.retrieved_sources?.map((src: string, i: number) => (
@@ -146,6 +147,14 @@ export default function SubmitScreen() {
     </SafeAreaView>
   );
 }
+
+const markdownStyles = {
+  body: { fontSize: 14, lineHeight: 21, color: '#333333' },
+  heading3: { fontSize: 16, fontWeight: '700' as const, marginTop: 14, marginBottom: 6, color: '#000000' },
+  strong: { fontWeight: '700' as const, color: '#000000' },
+  bullet_list: { marginTop: 4 },
+  list_item: { marginBottom: 4 },
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 16, backgroundColor: '#ffffff' },

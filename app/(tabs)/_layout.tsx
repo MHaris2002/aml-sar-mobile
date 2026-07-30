@@ -17,22 +17,29 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
+          title: 'Home',
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="house.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Transactions',
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="list.bullet" color={color} />,
         }}
       />
       <Tabs.Screen
         name="submit"
         options={{
-          title: 'Submit',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Check New',
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="paperplane.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="knowledge"
         options={{
-          title: 'Knowledge Base',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.fill" color={color} />,
+          title: 'How It Works',
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="doc.text.fill" color={color} />,
         }}
       />
     </Tabs>
